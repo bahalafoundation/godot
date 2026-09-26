@@ -135,6 +135,7 @@ RenderingContextDriver *RenderingNativeSurfaceAndroid::create_rendering_context(
 	return nullptr;
 }
 
+#if defined(GLES3_ENABLED)
 bool GLManagerAndroid::validate_driver() const {
 	void *handle = dlopen("libGLESv3.so", RTLD_LOCAL);
 	if (handle == nullptr) {
@@ -153,6 +154,8 @@ bool GLManagerAndroid::validate_driver() const {
 	}
 	return true;
 }
+
+#endif // GLES3_ENABLED
 
 
 GLManager *RenderingNativeSurfaceAndroid::create_gl_manager(const String &p_driver_name) {
