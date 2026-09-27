@@ -477,6 +477,15 @@ FileAccessPack::FileAccessPack(const String &p_path, const PackedData::PackedFil
 		off = 0; // For the sparse pack offset is always zero.
 	} else {
 		f = FileAccess::open(pf.pack, FileAccess::READ);
+		// Checked here, not only in the shared ERR_FAIL_COND_MSG below (arcade#182): that
+		// one runs after `f->seek()`, so a pack file `open()` can't reach — deleted,
+		// permissions, too many open files, anything `FileAccess::open()` reports as
+		// failure by returning null — crashed here instead, a null Ref<FileAccess>
+		// dereferenced through its vtable with nothing to say why. `seek()`'s caller,
+		// not `FileAccess::open()`, is what's missing the check its own docs promise.
+		if (f.is_null()) {
+			ERR_FAIL_MSG(vformat("Can't open pack-referenced file '%s'.", String(pf.pack)));
+		}
 		f->seek(pf.offset);
 		off = pf.offset;
 	}
