@@ -231,7 +231,20 @@ Ref<FileAccess> PackedData::try_open_path(const String &p_path) {
 		return nullptr; // Not found.
 	}
 
-	return E->value.src->get_file(p_path, &E->value);
+	// A copy, not a pointer into `files`' own bucket storage (arcade#182). `get_file()`
+	// below opens the underlying file, which for an encrypted resource parses a header
+	// through `FileAccessEncrypted` — code this function does not control the extent
+	// of, now or in a future engine version. A `PackedFile*` that still points at this
+	// HashMap's storage is only as safe as a guarantee that nothing mutates `files`
+	// (an `add_pack()`/`add_path()` call, e.g. mounting a second pack over this one)
+	// before the pointer is done being read; that guarantee does not hold in general,
+	// and a HashMap that rehashes out from under a live pointer is exactly the kind of
+	// corruption that surfaces later, far from here, as a crash or a hang in whichever
+	// hash table's memory the reused block next lands in — see the issue for two such
+	// symptoms from the same class of bug. The copy is a few primitives, a `PackSource*`
+	// and a `String`: negligible next to the file I/O `get_file()` is about to do.
+	PackedFile pf = E->value;
+	return pf.src->get_file(p_path, &pf);
 }
 
 bool PackedData::has_path(const String &p_path) {
